@@ -1,68 +1,77 @@
-from fastapi.testclient import TestClient
-from main import app
-import pytest
 
-client = TestClient(app)
+import unittest
+from unittest.mock import patch
+from main import add, subtract, multiply, divide, calculator
 
-# --- All endpoints ---
-endpoints = ["/add", "/subtract", "/multiply", "/divide", "/power", "/modulo", "/average"]
+class TestCalculator(unittest.TestCase):
 
-# --- Happy paths and edge cases ---
-@pytest.mark.parametrize("endpoint", endpoints)
-@pytest.mark.parametrize("a,b", [
-    (5, 3),
-    (0, 0),
-    (-5, 3),
-    (2.5, 3.5),
-    (999999, 1),
-])
-def test_happy_and_edge_cases(endpoint, a, b):
-    # Skip divide/modulo zero for now, handled separately
-    if endpoint == "/divide" and b == 0:
-        pytest.skip("Skip divide by zero here")
-    if endpoint == "/modulo" and b == 0:
-        pytest.skip("Skip modulo by zero here")
-    response = client.get(endpoint, params={"a": a, "b": b})
-    assert response.status_code == 200
-    json_data = response.json()
-    assert "result" in json_data or "error" in json_data
+    # ------------------- ADD -------------------
+    def test_add(self):
+        self.assertEqual(add(3, 4), 7)
+        self.assertEqual(add(-1, 5), 4)
+        self.assertAlmostEqual(add(2.5, 1.2), 3.7)
 
-# --- Divide / modulo by zero ---
-@pytest.mark.parametrize("endpoint", ["/divide", "/modulo"])
-def test_zero_division(endpoint):
-    response = client.get(endpoint, params={"a": 5, "b": 0})
-    assert response.status_code == 200
-    assert "error" in response.json()
+    # ------------------- SUBTRACT -------------------
+    def test_subtract(self):
+        self.assertEqual(subtract(10, 3), 7)
+        self.assertEqual(subtract(0, 5), -5)
+        self.assertAlmostEqual(subtract(5.5, 2.2), 3.3)
 
-# --- Invalid types ---
-@pytest.mark.parametrize("endpoint", endpoints)
-@pytest.mark.parametrize("a,b", [
-    ("x", 1),
-    (1, "y"),
-    ("x", "y"),
-    (None, 1),
-    (1, None),
-    ("", 1),
-    (1, ""),
-])
-def test_invalid_types(endpoint, a, b):
-    response = client.get(endpoint, params={"a": a, "b": b})
-    assert response.status_code == 422
+    # ------------------- MULTIPLY -------------------
+    def test_multiply(self):
+        self.assertEqual(multiply(4, 5), 20)
+        self.assertEqual(multiply(-2, 3), -6)
+        self.assertAlmostEqual(multiply(2.5, 2), 5.0)
+        self.assertEqual(multiply(5, 0), 0)
 
-# --- Missing parameters ---
-@pytest.mark.parametrize("endpoint", endpoints)
-def test_missing_parameters(endpoint):
-    response = client.get(endpoint, params={"a": 5})
-    assert response.status_code == 422
-    response = client.get(endpoint, params={"b": 5})
-    assert response.status_code == 422
-    response = client.get(endpoint, params={})
-    assert response.status_code == 422
+    # ------------------- DIVIDE -------------------
+    def test_divide(self):
+        self.assertEqual(divide(10, 2), 5)
+        self.assertAlmostEqual(divide(7.5, 2.5), 3.0)
+        self.assertEqual(divide(-10, 2), -5)
+        self.assertEqual(divide(10, -2), -5)
+        self.assertEqual(divide(-10, -2), 5)
 
-# --- Home endpoint ---
-def test_home():
-    response = client.get("/")
-    data = response.json()
-    assert response.status_code == 200
-    assert "message" in data
-    assert "swagger_url" in data
+    def test_divide_by_zero(self):
+        self.assertEqual(divide(5, 0), "Error: Cannot divide by zero!")
+        self.assertEqual(divide(0, 0), "Error: Cannot divide by zero!")
+
+    # ------------------- FULL CALCULATOR INTERACTIVE TEST -------------------
+    @patch('builtins.input', side_effect=['10', '5', '+'])
+    @patch('builtins.print')
+    def test_calculator_add(self, mock_print, mock_input):
+        calculator()
+        mock_print.assert_any_call(15)
+
+    @patch('builtins.input', side_effect=['10', '5', '-'])
+    @patch('builtins.print')
+    def test_calculator_subtract(self, mock_print, mock_input):
+        calculator()
+        mock_print.assert_any_call(5)
+
+    @patch('builtins.input', side_effect=['10', '5', '*'])
+    @patch('builtins.print')
+    def test_calculator_multiply(self, mock_print, mock_input):
+        calculator()
+        mock_print.assert_any_call(50)
+
+    @patch('builtins.input', side_effect=['10', '5', '/'])
+    @patch('builtins.print')
+    def test_calculator_divide(self, mock_print, mock_input):
+        calculator()
+        mock_print.assert_any_call(2.0)
+
+    @patch('builtins.input', side_effect=['10', '0', '/'])
+    @patch('builtins.print')
+    def test_calculator_divide_by_zero(self, mock_print, mock_input):
+        calculator()
+        mock_print.assert_any_call("Error: Cannot divide by zero!")
+
+    @patch('builtins.input', side_effect=['10', '5', '^'])
+    @patch('builtins.print')
+    def test_calculator_invalid_op(self, mock_print, mock_input):
+        calculator()
+        mock_print.assert_any_call("Invalid operation!")
+
+if __name__ == "__main__":
+    unittest.main()
