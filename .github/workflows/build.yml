@@ -47,14 +47,17 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 8. Build Docker image (single image for CI)
+      # 8. Build Docker image with Git SHA tag
       - name: Build Docker image
-        run: docker build -t fastapi-calculator .
+        run: |
+          IMAGE_TAG=fastapi-calculator:${GITHUB_SHA::8}
+          docker build -t $IMAGE_TAG .
 
       # 9. Create Docker network (idempotent) and run FastAPI app
       - run: |
           docker network inspect zapnet >/dev/null 2>&1 || docker network create zapnet
-          docker run -d --network zapnet --name fastapi-app fastapi-calculator
+          IMAGE_TAG=fastapi-calculator:${GITHUB_SHA::8}
+          docker run -d --network zapnet --name fastapi-app $IMAGE_TAG
           # Wait for app to be ready
           for i in {1..20}; do
             if curl -s http://localhost:8000/health >/dev/null 2>&1; then
@@ -84,13 +87,14 @@ jobs:
           name: zap-report
           path: zap-output/*
 
-      # 12. Push Docker image to Docker Hub
+      # 12. Push Docker image with Git SHA tag
       - name: Push Docker image
-        run: docker push fastapi-calculator
+        run: |
+          IMAGE_TAG=fastapi-calculator:${GITHUB_SHA::8}
+          docker push $IMAGE_TAG
 
       # 13. SonarQube scan
       - uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_SCANNER_OPTS: -Dsonar.python.coverage.reportPaths=coverage.xml
-
