@@ -43,6 +43,12 @@ jobs:
       # Run Unit Tests with PYTHONPATH and API_KEY
       - name: Run Unit Tests
         run: |
+
+      # SonarQube Scan
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           export PYTHONPATH=$PYTHONPATH:$(pwd)/src
           export API_KEY="dummy_key_for_tests"
           pytest -v
