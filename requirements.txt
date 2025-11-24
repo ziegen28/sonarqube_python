@@ -5,8 +5,8 @@ fastapi==0.113.0
 uvicorn[standard]==0.23.2
 
 # HTTP client for testing FastAPI endpoints
-httpx==0.26.2
+httpx
 
 # Testing framework
-pytest==9.0.1
-pytest-cov==7.0.0
+pytest
+pytest-cov
