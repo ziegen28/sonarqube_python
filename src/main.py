@@ -1,76 +1,106 @@
 # -------------------------------------------------------------
-# WARNING: This file is intentionally vulnerable.
-# It exists ONLY for testing SonarQube / SAST tools.
-# DO NOT use in any real application.
+# SAFE VERSION — Vulnerabilities Removed
 # -------------------------------------------------------------
 
 import sqlite3
 import os
 import subprocess
+import shlex
 
 
 # -------------------------------------------------------------
-# Hardcoded secret  (S2068)
+# Secure API Key Handling (Fix for S2068)
 # -------------------------------------------------------------
-API_KEY = "12345-very-insecure-api-key"   # SonarQube should flag this
+# Do NOT hardcode secrets — load from environment instead.
+API_KEY = os.getenv("API_KEY")
+if not API_KEY:
+    raise RuntimeError("Missing environment variable: API_KEY")
 
 
 # -------------------------------------------------------------
-# SQL Injection Example (S3649)
+# Safe SQL Query (Fix for S3649)
 # -------------------------------------------------------------
 def get_user_score(db_path, username):
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
 
-    # ❌ Vulnerable query: direct string concatenation
-    query = "SELECT score FROM users WHERE name = '" + username + "';"
-    print("Executing query:", query)
+    # ✔ Use parameterized queries
+    query = "SELECT score FROM users WHERE name = ?;"
+    print("Executing query (safe):", query, username)
 
-    cur.execute(query)  # SonarQube will flag this
+    cur.execute(query, (username,))
     result = cur.fetchone()
     conn.close()
     return result
 
 
 # -------------------------------------------------------------
-# Command Injection Example  (S4721)
+# Safe Command Execution (Fix for S4721)
 # -------------------------------------------------------------
 def run_system_command(cmd):
-    # ❌ Vulnerable: user-controlled command execution
-    return subprocess.check_output(cmd, shell=True)
+    # ✔ Avoid shell=True + sanitize
+    if not isinstance(cmd, list):
+        cmd = shlex.split(cmd)
+
+    return subprocess.check_output(cmd)
 
 
 # -------------------------------------------------------------
-# Insecure Eval Example (S2076 / S5334)
+# Safe Expression Evaluation (Fix for S2076 / S5334)
 # -------------------------------------------------------------
 def calculate(expr):
-    # ❌ Vulnerable: executing arbitrary input
-    return eval(expr)
+    # ✔ No eval — allow only arithmetic using Python’s AST
+    import ast
+    import operator
+
+    allowed_ops = {
+        ast.Add: operator.add,
+        ast.Sub: operator.sub,
+        ast.Mult: operator.mul,
+        ast.Div: operator.truediv,
+        ast.Pow: operator.pow,
+        ast.Mod: operator.mod,
+    }
+
+    class SafeEval(ast.NodeVisitor):
+        def visit_BinOp(self, node):
+            if type(node.op) not in allowed_ops:
+                raise ValueError("Operation not allowed")
+            left = self.visit(node.left)
+            right = self.visit(node.right)
+            return allowed_ops[type(node.op)](left, right)
+
+        def visit_Num(self, node):
+            return node.n
+
+        def generic_visit(self, node):
+            raise ValueError("Invalid expression")
+
+    tree = ast.parse(expr, mode="eval")
+    return SafeEval().visit(tree.body)
 
 
 # -------------------------------------------------------------
-# Insecure file operations (S2083)
+# Safe File Reading (Fix for S2083)
 # -------------------------------------------------------------
 def read_file(path):
-    # ❌ No path validation — SonarQube should flag
-    with open(path, "r") as f:
+    # ✔ Restrict allowed directory
+    BASE_DIR = "/safe/data/"
+
+    abs_path = os.path.abspath(path)
+    if not abs_path.startswith(os.path.abspath(BASE_DIR)):
+        raise ValueError("Access outside allowed directory is forbidden")
+
+    with open(abs_path, "r") as f:
         return f.read()
 
 
 # -------------------------------------------------------------
-# MAIN (for demonstration only)
+# MAIN (demo)
 # -------------------------------------------------------------
 if __name__ == "__main__":
-    print("=== Vulnerable SonarQube Test Script ===")
+    print("=== Secure SonarQube Test Script ===")
 
-    # Trigger SQLi vulnerability
-    print(get_user_score("example.db", "alice' OR '1'='1"))
-
-    # Trigger command injection
-    print(run_system_command("echo vulnerable"))
-
-    # Trigger eval vulnerability
+    print(get_user_score("example.db", "alice"))
+    print(run_system_command("echo secure"))
     print(calculate("2 + 3"))
-
-    # Trigger insecure file read
-    print(read_file("/etc/passwd"))
