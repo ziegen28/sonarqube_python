@@ -1,21 +1,18 @@
-# Dockerfile
-FROM python:3.11-slim
+# Use official Python 3.10 image
+FROM python:3.10-slim
 
 # Set working directory
 WORKDIR /app
 
-# Copy only required files
+# Copy requirements and install dependencies
 COPY requirements.txt .
-
-# Upgrade pip and install dependencies
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy source code
-COPY src/ src/
+COPY src/ ./src
 
-# Expose port
-EXPOSE 8000
+# Set environment variable to avoid Python buffering output
+ENV PYTHONUNBUFFERED=1
 
-# Command to run FastAPI
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Default command: run tests with coverage
+CMD ["bash", "-c", "PYTHONPATH=src coverage run -m unittest discover -s src -p 'test_*.py' && coverage report"]
