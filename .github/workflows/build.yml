@@ -24,11 +24,14 @@ jobs:
           pip install pytest flask pytest-cov
           python -m pytest src/test.py --cov=. --cov-report xml:coverage.xml
 
-      # Step 3: SonarQube Scan
+
+ # Step 5: SonarQube Scan
       - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v2
+        uses: SonarSource/sonarqube-scan-action@v6
+        with:
+          projectKey: sonarqube_python
+          organization: ziegen28
+          sources: src
+          coverageReportPaths: coverage.xml
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: >
-            -Dsonar.python.coverage.reportPaths=coverage.xml
