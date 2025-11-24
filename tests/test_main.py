@@ -3,6 +3,11 @@ import tempfile
 import subprocess
 import pytest
 import sqlite3
+import sys
+
+# Add src folder to sys.path so we can import main
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
+
 from main import get_user_score, run_system_command, calculate, read_file
 
 # -------------------------------
@@ -48,13 +53,11 @@ def test_calculate():
 # Test read_file
 # -------------------------------
 def test_read_file(tmp_path, monkeypatch):
-    # Create a "safe" directory inside tmp_path
     safe_dir = tmp_path / "safe_data"
     safe_dir.mkdir()
     safe_file = safe_dir / "test.txt"
     safe_file.write_text("Hello World")
 
-    # Monkeypatch the BASE_DIR in main.py
     monkeypatch.setattr("main.BASE_DIR", str(safe_dir))
 
     # Valid file access
