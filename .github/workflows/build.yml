@@ -48,3 +48,8 @@ jobs:
             -Dsonar.python.coverage.reportPaths=coverage.xml
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+
+      # Step 6: Build Docker Image
+      - name: Build Docker Image
+        run: |
