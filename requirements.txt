@@ -1,12 +1,6 @@
-# FastAPI web framework
-fastapi==0.113.0
-
-# ASGI server for running FastAPI
-uvicorn[standard]==0.23.2
-
-# HTTP client for testing FastAPI endpoints
-httpx
 
 # Testing framework
 pytest
 pytest-cov
+
+coverage
