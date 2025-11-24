@@ -2,34 +2,36 @@ import os
 import tempfile
 import subprocess
 import pytest
+import sqlite3
 from main import get_user_score, run_system_command, calculate, read_file
 
 # -------------------------------
-# Test get_user_score
+# Fixture: Temporary SQLite DB
 # -------------------------------
-def test_get_user_score():
-    # Create a temporary SQLite DB
-    import sqlite3
-    with tempfile.NamedTemporaryFile() as tmp_db:
+@pytest.fixture
+def temp_db():
+    with tempfile.NamedTemporaryFile(suffix=".db") as tmp_db:
         conn = sqlite3.connect(tmp_db.name)
         cur = conn.cursor()
         cur.execute("CREATE TABLE users (name TEXT, score INTEGER);")
         cur.execute("INSERT INTO users VALUES (?, ?)", ("alice", 100))
         conn.commit()
         conn.close()
+        yield tmp_db.name
 
-        # Test fetching user score
-        score = get_user_score(tmp_db.name, "alice")
-        assert score[0] == 100
-
+# -------------------------------
+# Test get_user_score
+# -------------------------------
+def test_get_user_score(temp_db):
+    score = get_user_score(temp_db, "alice")
+    assert score[0] == 100
 
 # -------------------------------
 # Test run_system_command
 # -------------------------------
 def test_run_system_command():
     output = run_system_command("echo hello")
-    assert output.strip() == b"hello"
-
+    assert output.decode().strip() == "hello"
 
 # -------------------------------
 # Test calculate
@@ -40,24 +42,27 @@ def test_calculate():
     assert calculate("2 * 3") == 6
     assert calculate("8 / 4") == 2
     with pytest.raises(ValueError):
-        calculate("__import__('os').system('ls')")  # unsafe
-
+        calculate("__import__('os').system('ls')")  # unsafe input
 
 # -------------------------------
 # Test read_file
 # -------------------------------
-def test_read_file():
-    # Create a temporary safe directory
-    with tempfile.TemporaryDirectory() as tmpdir:
-        BASE_DIR = "/safe/data/"
-        os.makedirs(BASE_DIR, exist_ok=True)
-        safe_file_path = os.path.join(BASE_DIR, "test.txt")
-        with open(safe_file_path, "w") as f:
-            f.write("Hello World")
+def test_read_file(tmp_path, monkeypatch):
+    # Create a "safe" directory inside tmp_path
+    safe_dir = tmp_path / "safe_data"
+    safe_dir.mkdir()
+    safe_file = safe_dir / "test.txt"
+    safe_file.write_text("Hello World")
 
-        content = read_file(safe_file_path)
-        assert content == "Hello World"
+    # Monkeypatch the BASE_DIR in main.py
+    monkeypatch.setattr("main.BASE_DIR", str(safe_dir))
 
-        # Access outside safe dir should raise error
-        with pytest.raises(ValueError):
-            read_file(tmpdir + "/file.txt")
+    # Valid file access
+    content = read_file(str(safe_file))
+    assert content == "Hello World"
+
+    # Access outside safe directory should raise error
+    outside_file = tmp_path / "unsafe.txt"
+    outside_file.write_text("This should fail")
+    with pytest.raises(ValueError):
+        read_file(str(outside_file))
