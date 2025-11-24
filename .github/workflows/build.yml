@@ -27,9 +27,7 @@ jobs:
           pip install pytest
 
       - name: Run Unit Tests
-        run: |
-          - name: Run Unit Tests
-            run: PYTHONPATH=$(pwd) pytest -v
+        run: PYTHONPATH=$(pwd) pytest -v
 
 
       - name: SonarQube Scan
