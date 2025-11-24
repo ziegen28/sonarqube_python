@@ -7,7 +7,7 @@ app = FastAPI(
 )
 
 @app.get("/add")
-def add(a: float, b: float):
+def add(a: float, b: float);
     return {"result": a + b}
 
 @app.get("/subtract")
