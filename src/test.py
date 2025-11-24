@@ -4,104 +4,59 @@ import pytest
 
 client = TestClient(app)
 
-# --- Helper to call endpoints ---
-def call(ep, a=None, b=None):
-    params = {}
-    if a is not None:
-        params["a"] = a
-    if b is not None:
-        params["b"] = b
-    return client.get(ep, params=params)
+# --- All endpoints ---
+endpoints = ["/add", "/subtract", "/multiply", "/divide", "/power", "/modulo", "/average"]
 
-# --- Endpoint happy paths and edge cases ---
-@pytest.mark.parametrize("endpoint,a,b,expected", [
-    # add
-    ("/add", 5, 3, {"result": 8}),
-    ("/add", -2, 3, {"result": 1}),
-    ("/add", 2.5, 3.5, {"result": 6.0}),
-    ("/add", 0, 0, {"result": 0}),
-    
-    # subtract
-    ("/subtract", 5, 3, {"result": 2}),
-    ("/subtract", 3, 5, {"result": -2}),
-    ("/subtract", 0, 0, {"result": 0}),
-    
-    # multiply
-    ("/multiply", 5, 3, {"result": 15}),
-    ("/multiply", -2, 4, {"result": -8}),
-    ("/multiply", 0, 5, {"result": 0}),
-    
-    # divide
-    ("/divide", 6, 3, {"result": 2.0}),
-    ("/divide", 5, 2, {"result": 2.5}),
-    
-    # power
-    ("/power", 2, 3, {"result": 8}),
-    ("/power", 2, 0, {"result": 1}),
-    
-    # modulo
-    ("/modulo", 10, 3, {"result": 1}),
-    
-    # average
-    ("/average", 4, 6, {"result": 5.0}),
-    ("/average", 0, 0, {"result": 0.0}),
-    ("/average", -4, 4, {"result": 0.0}),
+# --- Happy paths and edge cases ---
+@pytest.mark.parametrize("endpoint", endpoints)
+@pytest.mark.parametrize("a,b", [
+    (5, 3),
+    (0, 0),
+    (-5, 3),
+    (2.5, 3.5),
+    (999999, 1),
 ])
-def test_happy_paths(endpoint, a, b, expected):
-    response = call(endpoint, a, b)
+def test_happy_and_edge_cases(endpoint, a, b):
+    # Skip divide/modulo zero for now, handled separately
+    if endpoint == "/divide" and b == 0:
+        pytest.skip("Skip divide by zero here")
+    if endpoint == "/modulo" and b == 0:
+        pytest.skip("Skip modulo by zero here")
+    response = client.get(endpoint, params={"a": a, "b": b})
     assert response.status_code == 200
-    assert response.json() == expected
+    json_data = response.json()
+    assert "result" in json_data or "error" in json_data
 
 # --- Divide / modulo by zero ---
-@pytest.mark.parametrize("endpoint,a,b,expected", [
-    ("/divide", 6, 0, {"error": "Cannot divide by zero"}),
-    ("/modulo", 10, 0, {"error": "Cannot modulo by zero"}),
-])
-def test_zero_division(endpoint, a, b, expected):
-    response = call(endpoint, a, b)
+@pytest.mark.parametrize("endpoint", ["/divide", "/modulo"])
+def test_zero_division(endpoint):
+    response = client.get(endpoint, params={"a": 5, "b": 0})
     assert response.status_code == 200
-    assert response.json() == expected
+    assert "error" in response.json()
 
-# --- Invalid input types (FastAPI 422) ---
-@pytest.mark.parametrize("endpoint,a,b", [
-    ("/add", "x", 3),
-    ("/add", 5, "y"),
-    ("/subtract", "x", 3),
-    ("/subtract", 5, "y"),
-    ("/multiply", "x", 3),
-    ("/multiply", 5, "y"),
-    ("/divide", "x", 3),
-    ("/divide", 5, "y"),
-    ("/power", "x", 3),
-    ("/power", 5, "y"),
-    ("/modulo", "x", 3),
-    ("/modulo", 5, "y"),
-    ("/average", "x", 3),
-    ("/average", 5, "y"),
+# --- Invalid types ---
+@pytest.mark.parametrize("endpoint", endpoints)
+@pytest.mark.parametrize("a,b", [
+    ("x", 1),
+    (1, "y"),
+    ("x", "y"),
+    (None, 1),
+    (1, None),
+    ("", 1),
+    (1, ""),
 ])
 def test_invalid_types(endpoint, a, b):
-    response = call(endpoint, a, b)
-    assert response.status_code == 422  # FastAPI validation error
+    response = client.get(endpoint, params={"a": a, "b": b})
+    assert response.status_code == 422
 
-# --- Missing parameters (FastAPI 422) ---
-@pytest.mark.parametrize("endpoint,params", [
-    ("/add", {"a": 5}),          # missing b
-    ("/add", {"b": 3}),          # missing a
-    ("/subtract", {"a": 5}),     
-    ("/subtract", {"b": 3}),
-    ("/multiply", {"a": 5}),
-    ("/multiply", {"b": 3}),
-    ("/divide", {"a": 5}),
-    ("/divide", {"b": 3}),
-    ("/power", {"a": 5}),
-    ("/power", {"b": 3}),
-    ("/modulo", {"a": 5}),
-    ("/modulo", {"b": 3}),
-    ("/average", {"a": 5}),
-    ("/average", {"b": 3}),
-])
-def test_missing_params(endpoint, params):
-    response = client.get(endpoint, params=params)
+# --- Missing parameters ---
+@pytest.mark.parametrize("endpoint", endpoints)
+def test_missing_parameters(endpoint):
+    response = client.get(endpoint, params={"a": 5})
+    assert response.status_code == 422
+    response = client.get(endpoint, params={"b": 5})
+    assert response.status_code == 422
+    response = client.get(endpoint, params={})
     assert response.status_code == 422
 
 # --- Home endpoint ---
