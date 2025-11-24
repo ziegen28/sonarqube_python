@@ -1,42 +1,46 @@
-import os
-import sqlite3
-import subprocess
+from fastapi import FastAPI
 
-# -------------------------------
-# Module-level safe directory
-# -------------------------------
-BASE_DIR = "/safe/data"  # default safe directory
+app = FastAPI(
+    title="Calculator API",
+    description="A simple calculator API that works with Swagger UI.",
+    version="1.0"
+)
 
-# -------------------------------
-# Environment variable check
-# -------------------------------
-API_KEY = os.environ.get("API_KEY")
-if API_KEY is None:
-    raise RuntimeError("Missing environment variable: API_KEY")
+@app.get("/add")
+def add(a: float, b: float):
+    return {"result": a + b}
 
-# -------------------------------
-# Functions
-# -------------------------------
+@app.get("/subtract")
+def subtract(a: float, b: float):
+    return {"result": a - b}
 
-def get_user_score(db_path, username):
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    cur.execute("SELECT score FROM users WHERE name=?", (username,))
-    result = cur.fetchone()
-    conn.close()
-    return result
+@app.get("/multiply")
+def multiply(a: float, b: float):
+    return {"result": a * b}
 
-def run_system_command(cmd):
-    return subprocess.check_output(cmd, shell=True)
+@app.get("/divide")
+def divide(a: float, b: float):
+    if b == 0:
+        return {"error": "Cannot divide by zero"}
+    return {"result": a / b}
 
-def calculate(expr):
-    allowed_chars = "0123456789+-*/(). "
-    if any(c not in allowed_chars for c in expr):
-        raise ValueError("Unsafe expression")
-    return eval(expr)
+@app.get("/power")
+def power(a: float, b: float):
+    return {"result": a ** b}
 
-def read_file(file_path):
-    if not file_path.startswith(BASE_DIR):
-        raise ValueError("Access denied")
-    with open(file_path, "r") as f:
-        return f.read()
+@app.get("/modulo")
+def modulo(a: float, b: float):
+    if b == 0:
+        return {"error": "Cannot modulo by zero"}
+    return {"result": a % b}
+
+@app.get("/average")
+def average(a: float, b: float):
+    return {"result": (a + b) / 2}
+
+@app.get("/")
+def home():
+    return {
+        "message": "Calculator API is running. Open /docs to use Swagger UI.",
+        "swagger_url": "/docs"
+    }
