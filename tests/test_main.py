@@ -25,6 +25,13 @@ def temp_db():
         yield tmp_db.name
 
 # -------------------------------
+# Fixture: Set API_KEY for tests
+# -------------------------------
+@pytest.fixture(autouse=True)
+def set_api_key_env():
+    os.environ["API_KEY"] = "dummy_key_for_tests"
+
+# -------------------------------
 # Test get_user_score
 # -------------------------------
 def test_get_user_score(temp_db):
