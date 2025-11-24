@@ -43,7 +43,8 @@ jobs:
       # Run Unit Tests
       - name: Run Unit Tests
         run: |
-          PYTHONPATH=$(pwd):$PYTHONPATH pytest -v
+          export PYTHONPATH=$PYTHONPATH:$(pwd)/src
+          pytest -v
 
       # SonarQube Scan
       - name: SonarQube Scan
